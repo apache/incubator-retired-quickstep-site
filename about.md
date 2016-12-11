@@ -3,10 +3,10 @@ layout: page
 title: About
 permalink: /about/
 ---
-## Quickstep (Incubating)
+## Apache (Incubating) Quickstep
 Quickstep is a project starting out of the University of Wisconsin-Madison. It's now an [Apache (incubating) project](https://cwiki.apache.org/confluence/display/QUICKSTEP/Quickstep+Home)!
 
-### UW Team (current)
+### Current UW Team
 
 *   [Harshad Deshmukh](http://pages.cs.wisc.edu/~harshad/)
 *   [Hakan Memisoglu](https://github.com/hakanmemisoglu/)
