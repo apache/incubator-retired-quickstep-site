@@ -22,6 +22,15 @@ url: "" # the base hostname & protocol for your site, e.g. http://example.com
 github_username:  apache
 
 # Build settings
+destination: content
+defaults:
+  -
+    scope:
+      path: ""
+    values:
+      layout: plain
+
+# Build settings
 markdown: kramdown
 theme: minima
 gems:

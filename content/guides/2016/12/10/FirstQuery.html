@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Your First Query</title>
+  <meta name="description" content="For this tutorial, I’m going to assume you’re running in a unix environment. If you’re having trouble building on Windows, try asking the dev community (dev@...">
+
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="canonical" href="/guides/2016/12/10/FirstQuery.html">
+  <link rel="alternate" type="application/rss+xml" title="Quickstep" href="/feed.xml">
+  
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">Quickstep</a>
+
+    <nav class="site-nav">
+      <span class="menu-icon">
+        <svg viewBox="0 0 18 15" width="18px" height="15px">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </span>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about/">About</a>
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">Your First Query</h1>
+    <p class="post-meta"><time datetime="2016-12-10T12:29:09-06:00" itemprop="datePublished">Dec 10, 2016</time> • <span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Marc</span></span></p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p>For this tutorial, I’m going to assume you’re running in a unix environment. If you’re having trouble building on Windows, try asking the dev community (<a href="mailto:dev@quickstep.incubating.apache.org">dev@quickstep.incubating.apache.org</a>). You can also find a complete guide <a href="https://github.com/cramja/incubator-quickstep/blob/master/BUILDING.md">here in our documentation</a>.</p>
+
+<p>If you’re going to build Quickstep, you’ll first need to clone it from Github and initialize the submodules</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash">git clone https://github.com/apache/incubator-quickstep.git .
+<span class="nb">cd </span>incubator-quickstep
+git submodule init
+git submodule update</code></pre></figure>
+
+<p>Next, you’ll need to generate Makefiles using CMake, a cross-platform build tool that’s popular for building c++ projects. You’ll need a version at least as new as <strong>2.8.6</strong>. (You can check with <code class="highlighter-rouge">cmake -v</code>). If you have a later version, try generating the Makefiles like</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">cd </span>build
+cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Debug ..</code></pre></figure>
+
+<p>Note the weird flag <code class="highlighter-rouge">-DCMAKE_BUILD_TYPE=Debug</code>. This is telling cmake to use, you guessed it, a debug configuration for the build. This automatically includes flags in the generated Makefiles to include debug symbols and turn on optional checks and log statements in the code. There’s tons more flags, but only a few which we commonly use. Mostly I just change the  <code class="highlighter-rouge">CMAKE_CXX_COMPILER</code> and <code class="highlighter-rouge">CMAKE_C_COMPILER</code>. These flags control the compiler and I prefer clang++ and clang.</p>
+
+<p>If cmake ran successfully you can now build quickstep. If it didn’t run successfully, then don’t worry, we’re always finding small issues. Like, on one of my linux test machines, I always have to delete lines related to <code class="highlighter-rouge">gflag</code> in the <code class="highlighter-rouge">third_party/glog/CMakeLists.txt</code> file because of a misconfiguration on that machine. However, on my mac, cmake runs fine.</p>
+
+<p>If you’re having trouble, one solution might be to install some dependencies. If you’re running Ubuntu, this might help:</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash">sudo apt-get install -y build-essential protobuf-compiler libprotobuf-dev flex bison libnuma-dev</code></pre></figure>
+
+<p>If that still doesn’t help, email the dev list. Seriously, we’re nice.</p>
+
+<p>Assuming you’ve generated the Makefiles, you can now build quickstep and all of the unit tests. This will run faster if we just build quickstep.</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># the -j option is how many workers to assign to the compilation</span>
+make -j4 quickstep_cli_shell</code></pre></figure>
+
+<p>Once quickstep builds, you should now be able to run your first query. You’ll need to tell quickstep where to store its files.</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash">./quickstep_cli_shell --initialize_db<span class="o">=</span><span class="nb">true</span> --storage_path<span class="o">=</span>store</code></pre></figure>
+
+<p>This will initialize a directory called <code class="highlighter-rouge">store</code> where quickstep will persist data. If this ran successfully, then you should be seeing the command line prompt. For more information on what flags are available, enter <code class="highlighter-rouge">./quickstep_cli_shell --help</code>.</p>
+
+<p>Now we can run our first query! Let’s create a bunch of records and then aggregate over them.</p>
+
+<figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">my_numbers</span> <span class="p">(</span><span class="n">i</span> <span class="n">INT</span><span class="p">,</span> <span class="n">j</span> <span class="n">INT</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">my_numbers</span> <span class="k">SELECT</span> <span class="n">k</span> <span class="o">%</span> <span class="mi">10</span><span class="p">,</span> <span class="p">((</span><span class="n">k</span> <span class="o">%</span> <span class="mi">1969</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1337</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span> <span class="k">FROM</span> <span class="n">generate_series</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">)</span> <span class="k">AS</span> <span class="n">gs</span><span class="p">(</span><span class="n">k</span><span class="p">);</span>
+<span class="k">SELECT</span> <span class="n">i</span><span class="p">,</span> <span class="k">AVG</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">my_numbers</span> <span class="k">GROUP</span> <span class="k">BY</span> <span class="n">i</span><span class="p">;</span></code></pre></figure>
+
+<p>Of course, that query is meaningless but it should give you some idea of the sophistication of the SQL interface. This post is meant to give a taste of how I would get started with Quickstep. If it’s not enough or you want more information, we’ve been really good about updating our documentation. Checkout our <a href="https://github.com/apache/incubator-quickstep/blob/master/README.md">README</a> and <a href="https://github.com/apache/incubator-quickstep/blob/master/DEV_README.md">DEV_GUIDE</a> for more pointers!</p>
+
+
+  </div>
+
+  
+</article>
+
+      </div>
+    </main>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Quickstep</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>
+            
+              Quickstep
+            
+            </li>
+            
+            <li><a href="mailto:dev@quickstep.incubator.apache.org">dev@quickstep.incubator.apache.org</a></li>
+            
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/apache"><span class="icon icon--github"><svg viewBox="0 0 16 16" width="16px" height="16px"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">apache</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>Apache (incubating) Quickstep is a next-generation data processing platform.  Built from to ground up to take advantage of modern hardware, Quickstep is  designed for high-performance analytical queries.
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
