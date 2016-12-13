@@ -6,7 +6,7 @@ categories: guides
 author: Marc
 short: Building software from source can be tricky, especially if you've never used the project's build tools before. In this post, we'll step through how to get started with Quickstep.
 ---
-For this tutorial, I'm going to assume you're running in a unix environment. If you're having trouble building on Windows, try asking the dev community (<dev@quickstep.incubating.apache.org>). 
+For this tutorial, I'm going to assume you're running in a unix environment. If you're having trouble building on Windows, try asking the dev community (<dev@quickstep.incubating.apache.org>). You can also find a complete guide [here in our documentation](https://github.com/cramja/incubator-quickstep/blob/master/BUILDING.md).
 
 If you're going to build Quickstep, you'll first need to clone it from Github and initialize the submodules
 
@@ -59,5 +59,5 @@ INSERT INTO my_numbers SELECT k % 10, ((k % 1969) * 1337) / 3 FROM generate_seri
 SELECT i, AVG(j) FROM my_numbers GROUP BY i;
 {% endhighlight %}
 
-Of course, that query is meaningless but it should give you some idea of the sophistication of the SQL interface.
+Of course, that query is meaningless but it should give you some idea of the sophistication of the SQL interface. This post is meant to give a taste of how I would get started with Quickstep. If it's not enough or you want more information, we've been really good about updating our documentation. Checkout our [README](https://github.com/apache/incubator-quickstep/blob/master/README.md) and [DEV_GUIDE](https://github.com/apache/incubator-quickstep/blob/master/DEV_README.md) for more pointers!
 
