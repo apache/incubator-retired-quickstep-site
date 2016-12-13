@@ -24,3 +24,19 @@ vim _posts/2017-01-01-NewYearsResolutions.markdown
 
 # any edits you make will immediately be picked up and updated in your browser session
 ```
+
+## How to publish
+
+Once you have written and previewed your post, you will need to commit and push any changes you made to both your source `.md` files and compiled `.html` files.
+
+```bash
+jekyll build
+git add -u
+
+# if needed, add new content
+git add content/* 
+
+git commit -m 'my new post'
+git push upstream
+```
+
