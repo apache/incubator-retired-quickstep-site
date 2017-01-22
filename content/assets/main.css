@@ -296,6 +296,12 @@ pre {
 
 .post-content {
   margin-bottom: 30px; }
+  .post-content h1 {
+    margin-top: 50px;
+    font-size: 38px; }
+    @media screen and (max-width: 800px) {
+      .post-content h1 {
+        font-size: 34px; } }
   .post-content h2 {
     font-size: 32px; }
     @media screen and (max-width: 800px) {
@@ -311,6 +317,9 @@ pre {
     @media screen and (max-width: 800px) {
       .post-content h4 {
         font-size: 18px; } }
+
+.home h2 {
+  margin-top: 40px; }
 
 /**
  * Syntax highlighting styles
