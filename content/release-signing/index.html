@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>Release Signing</title>
-  <meta name="description" content="Apache (incubating) Quickstep is a next-generation data processing platform. Built from to ground up to take advantage of modern hardware, Quickstep is desig...">
+  <meta name="description" content="Quickstep is a next-generation data processing platform designed for high-performance analytical queries.">
 
   <link rel="stylesheet" href="/assets/main.css">
   <link rel="canonical" href="http://localhost:4000/release-signing/">
@@ -47,6 +47,10 @@
           
         
           
+          <a class="page-link" href="/release/">Releases</a>
+          
+        
+          
         
           
         
@@ -66,7 +70,7 @@
 
   <header class="post-header">
     <h1 class="post-title" itemprop="name headline">Release Signing</h1>
-    <p class="post-meta"><time datetime="2017-01-17T12:29:09-06:00" itemprop="datePublished">Jan 17, 2017</time> • <span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Marc</span></span></p>
+    <p class="post-meta"><time datetime="2017-02-02T01:30:00-06:00" itemprop="datePublished">Feb 2, 2017</time> • <span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Marc</span></span></p>
   </header>
 
   <div class="post-content" itemprop="articleBody">
@@ -121,6 +125,8 @@ brew install gpg
 
 <div class="language-sh highlighter-rouge"><pre class="highlight"><code><span class="c"># Appending some settings to ~/.gnupg/gpg.conf</span>
 
+<span class="c"># gpg must run at least once to create its config folders.</span>
+gpg --version 
 <span class="nb">echo</span> <span class="s2">"personal-digest-preferences SHA512"</span> &gt;&gt; ~/.gnupg/gpg.conf
 <span class="nb">echo</span> <span class="s2">"cert-digest-algo SHA512"</span> &gt;&gt; ~/.gnupg/gpg.conf
 <span class="nb">echo</span> <span class="s2">"default-preference-list SHA512 SHA384 SHA256 SHA224 AES256 AES192 AES CAST5 ZLIB BZIP2 ZIP Uncompressed"</span> &gt;&gt; ~/.gnupg/gpg.conf
@@ -144,9 +150,11 @@ gpg --list-keys
 <span class="c"># uid       [ultimate] Marc Spehlmann (EXAMPLE) &lt;ajmarc@cramja.com&gt;</span>
 <span class="c"># 'D64EA123' is the key's id</span>
 
-gpg --send-key D64EA123
+gpg --send-key YOUR_KEY_ID
+<span class="c"># ex: gpg --send-key D64EA123</span>
+
 <span class="c"># there is also a keyserver option to choose which keyserver</span>
-gpg --keyserver keyserver.ubuntu.com --send-key D64EA123
+<span class="c">#  gpg --keyserver keyserver.ubuntu.com --send-key D64EA123</span>
 </code></pre>
 </div>
 
@@ -157,7 +165,8 @@ gpg --keyserver keyserver.ubuntu.com --send-key D64EA123
 <div class="language-sh highlighter-rouge"><pre class="highlight"><code><span class="c"># Appending your public key to the KEYS file</span>
 
 <span class="nb">cd</span> ~/workspace/incubator-quickstep
-gpg --export --armor D64EA123 &gt;&gt; KEYS
+gpg --export --armor YOUR_KEY_ID &gt;&gt; KEYS
+<span class="c"># ex: gpg --export --armor D64EA123 &gt;&gt; KEYS</span>
 </code></pre>
 </div>
 
@@ -228,7 +237,7 @@ sha1sum --check apache-quickstep-incubating-x.y.z.tar.gz.sha
       </div>
 
       <div class="footer-col footer-col-3">
-        <p>Apache (incubating) Quickstep is a next-generation data processing platform.  Built from to ground up to take advantage of modern hardware, Quickstep is  designed for high-performance analytical queries.
+        <p>Quickstep is a next-generation data processing platform designed  for high-performance analytical queries.
 </p>
       </div>
     </div>

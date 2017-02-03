@@ -14,12 +14,11 @@
 title: Quickstep
 email: dev@quickstep.incubator.apache.org
 description: > # this means to ignore newlines until "baseurl:"
-  Apache (incubating) Quickstep is a next-generation data processing platform. 
-  Built from to ground up to take advantage of modern hardware, Quickstep is 
-  designed for high-performance analytical queries.
-baseurl: "" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
-github_username:  apache
+  Quickstep is a next-generation data processing platform designed 
+  for high-performance analytical queries.
+baseurl: ""
+url: "http://quickstep.apache.org/"
+github_username: apache
 
 # Build settings
 destination: content

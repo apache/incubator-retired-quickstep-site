@@ -2,7 +2,7 @@
 layout: post
 permalink: /release-signing/
 title: Release Signing
-date: 2017-01-17 12:29:09 -0600
+date: 2017-02-02 01:30:00 -0600
 author: Marc
 ---
 # Who Needs to Sign?
@@ -51,6 +51,8 @@ Next, change the settings of `gpg` so that a strong security standard is the def
 ```sh
 # Appending some settings to ~/.gnupg/gpg.conf
 
+# gpg must run at least once to create its config folders.
+gpg --version 
 echo "personal-digest-preferences SHA512" >> ~/.gnupg/gpg.conf
 echo "cert-digest-algo SHA512" >> ~/.gnupg/gpg.conf
 echo "default-preference-list SHA512 SHA384 SHA256 SHA224 AES256 AES192 AES CAST5 ZLIB BZIP2 ZIP Uncompressed" >> ~/.gnupg/gpg.conf
@@ -74,9 +76,11 @@ gpg --list-keys
 # uid       [ultimate] Marc Spehlmann (EXAMPLE) <ajmarc@cramja.com>
 # 'D64EA123' is the key's id
 
-gpg --send-key D64EA123
+gpg --send-key YOUR_KEY_ID
+# ex: gpg --send-key D64EA123
+
 # there is also a keyserver option to choose which keyserver
-gpg --keyserver keyserver.ubuntu.com --send-key D64EA123
+#  gpg --keyserver keyserver.ubuntu.com --send-key D64EA123
 ```
 
 ## Exporting your key to KEYS
@@ -87,7 +91,8 @@ You'll want to export the public key from the public/private key pair you are go
 # Appending your public key to the KEYS file
 
 cd ~/workspace/incubator-quickstep
-gpg --export --armor D64EA123 >> KEYS
+gpg --export --armor YOUR_KEY_ID >> KEYS
+# ex: gpg --export --armor D64EA123 >> KEYS
 ```
 
 ## Signing the Release Tarball

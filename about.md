@@ -4,7 +4,7 @@ title: About
 permalink: /about/
 ---
 ## Apache (Incubating) Quickstep
-Quickstep is a project starting out of the University of Wisconsin-Madison. It's now an [Apache (incubating) project](https://cwiki.apache.org/confluence/display/QUICKSTEP/Quickstep+Home)!
+Quickstep is a project started out of the University of Wisconsin-Madison. It's now an [Apache (incubating) project](https://cwiki.apache.org/confluence/display/QUICKSTEP/Quickstep+Home)!
 
 ### Current UW Team
 
