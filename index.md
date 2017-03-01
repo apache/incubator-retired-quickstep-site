@@ -20,3 +20,7 @@ Quickstep is an Apache (incubating) project. If you want to learn more about the
 ## Roadmap
 
 The current roadmap is to produce a platform that can run relational database applications using SQL as the interface. The longer-term roadmap is to cover a broader class of analytics.
+
+## Blog
+
+The link to our blog is [here](/blog-index).
