@@ -11,7 +11,7 @@
 # you will see them accessed via {{ site.title }}, {{ site.email }}, and so on.
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
-title: Quickstep
+title: Apache Quickstep (Incubating)
 email: dev@quickstep.incubator.apache.org
 description: > # this means to ignore newlines until "baseurl:"
   Quickstep is a next-generation data processing platform designed 
