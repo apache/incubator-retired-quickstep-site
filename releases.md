@@ -12,7 +12,17 @@ updater: Marc
 #
 ---
 
-# 0.1.0
+## 0.1.0
+
+### Major Changes
+* **Initial Release**
+* Runs SSB and TPC-H benchmarks
+* Storage type selection
+* Recent Performance enhancements
+  * LIP Filters improve join performance
+  * 3 Parallel GroupBy implementations
+
+### Artifacts
 * [apache-quickstep-incubating-0.1.0.tar.gz](https://dist.apache.org/repos/dist/release/incubator/quickstep/0.1.0/apache-quickstep-incubating-0.1.0.tar.gz)
 * [apache-quickstep-incubating-0.1.0.tar.gz.asc](https://dist.apache.org/repos/dist/release/incubator/quickstep/0.1.0/apache-quickstep-incubating-0.1.0.tar.gz.asc)
 * [apache-quickstep-incubating-0.1.0.tar.gz.md5](https://dist.apache.org/repos/dist/release/incubator/quickstep/0.1.0/apache-quickstep-incubating-0.1.0.tar.gz.md5)
