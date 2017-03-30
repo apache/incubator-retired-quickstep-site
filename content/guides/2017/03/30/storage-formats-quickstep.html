@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Storage Formats in Quickstep</title>
+  <meta name="description" content="One of the strengths of Quickstep is the variety of storage formats it offers to store the relational data. The storage management in Quickstep can work with...">
+
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="canonical" href="http://quickstep.apache.org//guides/2017/03/30/storage-formats-quickstep.html">
+  <link rel="alternate" type="application/rss+xml" title="Apache Quickstep (Incubating)" href="/feed.xml">
+  
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">Apache Quickstep (Incubating)</a>
+
+    <nav class="site-nav">
+      <span class="menu-icon">
+        <svg viewBox="0 0 18 15" width="18px" height="15px">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </span>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about/">About</a>
+          
+        
+          
+          <a class="page-link" href="/blog/">Blog</a>
+          
+        
+          
+        
+          
+          <a class="page-link" href="/release/">Releases</a>
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">Storage Formats in Quickstep</h1>
+    <p class="post-meta"><time datetime="2017-03-30T15:00:30-05:00" itemprop="datePublished">Mar 30, 2017</time> • <span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Harshad</span></span></p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p>One of the strengths of Quickstep is the variety of storage formats it offers to store the relational data. The storage management in Quickstep can work with all these formats, and each format comes with its own strengths and weaknesses. The foundation of this work was laid in a <a href="http://www.vldb.org/pvldb/vol6/p1474-chasseur.pdf">research paper</a> from the Patel Wisconsin Database group that appeared in <a href="http://vldb.org/">VLDB 2014</a> (International Conference on Very Large Databases). In this post, I will provide a brief primer on what these storage formats mean and how to use them in the Quickstep system. I will also provide links to the relevant source code files, so that the readers can start exploring the code base.</p>
+
+<h1 id="storage-formats-101">Storage Formats 101</h1>
+<p>A storage format refers to how the data in a table is laid out in the memory. Let’s consider a toy relational schema.</p>
+
+<figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">employee</span> <span class="p">(</span><span class="n">ID</span> <span class="n">INT</span><span class="p">,</span> <span class="n">Age</span> <span class="n">INT</span><span class="p">,</span> <span class="n">Name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">8</span><span class="p">));</span></code></pre></figure>
+
+<p>A tuple in the employee table consists of three attributes, id (an integer), age (an integer) and the name (character of 8 bytes fixed length). Let’s also populate our table with few tuples. For simplicity, let us assume that the name is a fixed length attribute; however, in general it could be variable length.</p>
+
+<figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">INSERT</span> <span class="k">into</span> <span class="n">employee</span> <span class="k">values</span> <span class="p">(</span><span class="mi">101</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="s1">'Jennifer'</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">into</span> <span class="n">employee</span> <span class="k">values</span> <span class="p">(</span><span class="mi">102</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="s1">'Jim'</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">into</span> <span class="n">employee</span> <span class="k">values</span> <span class="p">(</span><span class="mi">103</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="s1">'David'</span><span class="p">);</span></code></pre></figure>
+
+<p>Conceptually, our table looks as follows:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">ID</th>
+      <th style="text-align: center">Age</th>
+      <th style="text-align: center">Name</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">101</td>
+      <td style="text-align: center">30</td>
+      <td style="text-align: center">Jennifer</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">102</td>
+      <td style="text-align: center">25</td>
+      <td style="text-align: center">Jim</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">103</td>
+      <td style="text-align: center">35</td>
+      <td style="text-align: center">David</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Dropping a table is easy -</p>
+
+<figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">DROP</span> <span class="k">TABLE</span> <span class="n">employee</span><span class="p">;</span></code></pre></figure>
+
+<p>Next, let us dig into understanding the different ways in which this table can be stored in memory.</p>
+
+<h2 id="row-store">Row Store</h2>
+
+<p>The first storage format we will look at is <em>row store</em>, which is a popular format, and one that is intuitive too.</p>
+
+<p>The figure below represents how a row store format for our toy example looks like in memory. The offsets indicate how far is the memory location from the beginning of the block.</p>
+
+<p><img src="/assets/storage-format-row-store.jpg" alt="Row Store" /></p>
+
+<p>In the row store format, a tuple is stored in the table definition order. In memory, the ID (101) of the first tuple is stored at some address, and it is followed by the age field for that tuple (30), and then the name field (“Jennifer”). The second tuple is stored in memory sequentially after the first tuple, and so on.</p>
+
+<h2 id="column-store">Column Store</h2>
+
+<p>Let’s now take a look at the <em>column store</em> format. The figure below depicts a column store layout for our toy example.</p>
+
+<p><img src="/assets/storage-format-column-store.jpg" alt="Column Store" /></p>
+
+<p>In the column store format, the values from the same column are stored together. The order in which the values from a column are stored remains the same for all the columns. Notice the ID values 101, 102, 103 are stored contiguously. The corresponding Age fields 30, 25 and 35 are stored contiguously and likewise for the Name column.</p>
+
+<h2 id="compression">Compression</h2>
+
+<p>Compression is a standard technique to reduce the storage footprint. There is a large body of work on various compression techniques, which we won’t cover here. Let’s look at how compression can be applied in our toy example. If we look at the ID column, it has three values 101, 102 and 103. If they are stored as regular integers, each of them will occupy 4 bytes of memory. Interestingly, we can reduce the memory consumed in storing these three values. Observe that these three values are very close to 100. If we remember the base value 100 and only record the difference of each value from this base value (of 100), then we only need to store the values 1, 2, and 3. To store these three <em>deltas</em>, we don’t even need a 4 byte integer, a 1-byte value is enough.</p>
+
+<p>Putting it all together, the picture below shows the compressed column store format in which the compression is applied on the ID column.</p>
+
+<p><img src="/assets/storage-format-compressed-column-store.jpg" alt="Column Store with Compression" /></p>
+
+<p>Observe that the memory occupied by the three tuples together is only 43 bytes, compared to 48 bytes in the row store and the column store formats. As the number of tuples increase, there may be more opportunities for compression and thus more memory savings.</p>
+
+<p>There are some aspects related to storage management which deserve a blog post of their own. This includes the block-based storage design, and the impact of the above storage formats on various analytical queries. I hope to write more blog posts to cover these topics in the future.</p>
+
+<h1 id="creating-tables-with-various-storage-formats-in-quickstep">Creating tables with various storage formats in Quickstep</h1>
+
+<p>Now I will show you how to use the above storage formats to create tables in Quickstep. The storage format specification is part of the <code class="highlighter-rouge">CREATE TABLE SQL</code> command. We will continue with our toy example above to illustrate the various ways in which we can use the storage formats in Quickstep.</p>
+
+<figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">employee</span> <span class="p">(</span>
+<span class="n">ID</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span> 
+<span class="n">Age</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span> 
+<span class="n">Name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span>
+<span class="p">)</span> <span class="k">WITH</span> <span class="n">BLOCKPROPERTIES</span> <span class="p">(</span>
+  <span class="k">TYPE</span> <span class="n">split_rowstore</span><span class="p">,</span>
+  <span class="n">BLOCKSIZEMB</span> <span class="mi">4</span><span class="p">);</span></code></pre></figure>
+
+<p>I will now describe some keywords used in the above SQL statement. The keyword <code class="highlighter-rouge">BLOCKPROPERTIES</code> refers to the storage properties of this table. The above command means that all the blocks in the employee table will use the row store format (the name <code class="highlighter-rouge">split_rowstore</code> means just simple row store), with each block sized to a maximum of 4 MB.</p>
+
+<p>In the example below, all the blocks in the employee table have compressed column store as their storage format. The values in each block are sorted by the <code class="highlighter-rouge">ID</code> values, and the compression is applied on the <code class="highlighter-rouge">ID</code> and <code class="highlighter-rouge">Name</code> columns.</p>
+
+<p>The <code class="highlighter-rouge">COMPRESS</code> keyword accepts one or more or <code class="highlighter-rouge">ALL</code> the columns from the table. Thus it can look like:</p>
+
+<figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">employee</span> <span class="p">(</span>
+<span class="n">ID</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span> 
+<span class="n">Age</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span> 
+<span class="n">Name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span>
+<span class="p">)</span> <span class="k">WITH</span> <span class="n">BLOCKPROPERTIES</span> <span class="p">(</span>
+  <span class="k">TYPE</span> <span class="n">compressed_columnstore</span><span class="p">,</span>
+  <span class="n">SORT</span> <span class="n">ID</span><span class="p">,</span>
+  <span class="n">COMPRESS</span> <span class="p">(</span><span class="n">ID</span><span class="p">,</span> <span class="n">Name</span><span class="p">),</span>
+  <span class="n">BLOCKSIZEMB</span> <span class="mi">4</span><span class="p">);</span></code></pre></figure>
+
+<p>Finally, the command below indicates that the compression is applied on all the columns.</p>
+
+<figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">employee</span> <span class="p">(</span>
+<span class="n">ID</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span> 
+<span class="n">Age</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span> 
+<span class="n">Name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span>
+<span class="p">)</span> <span class="k">WITH</span> <span class="n">BLOCKPROPERTIES</span> <span class="p">(</span>
+  <span class="k">TYPE</span> <span class="n">compressed_columnstore</span><span class="p">,</span>
+  <span class="n">SORT</span> <span class="n">ID</span><span class="p">,</span>
+  <span class="n">COMPRESS</span> <span class="k">ALL</span><span class="p">,</span>
+  <span class="n">BLOCKSIZEMB</span> <span class="mi">4</span><span class="p">);</span></code></pre></figure>
+
+<h1 id="implementation-details">Implementation Details</h1>
+
+<p>The above illustrations are meant to explain the various storage formats. In the actual implementation, in each storage block, there is a separate region to store the variable length attributes. For such attributes, in the row store implementation, we use a pointer (or offset) to point to the true location of the variable length attribute.</p>
+
+<p>In the current implementation, the compressed column store format requires that all the variable length attributes be compressed.</p>
+
+<p>For folks interested in looking at the source code for these storage formats, I  provide the links to relevant source code files below. Our code is well documented (doxygen) for the most part, so it should be easier to read.</p>
+
+<p><a href="https://github.com/apache/incubator-quickstep/blob/master/parser/ParseBlockProperties.hpp">Parsing the block properties</a></p>
+
+<p><a href="https://github.com/apache/incubator-quickstep/blob/master/storage/SplitRowStoreTupleStorageSubBlock.hpp">Row store implementation</a></p>
+
+<p><a href="https://github.com/apache/incubator-quickstep/blob/master/storage/BasicColumnStoreTupleStorageSubBlock.hpp">Basic column store implementation</a></p>
+
+<p><a href="https://github.com/apache/incubator-quickstep/blob/master/storage/CompressedColumnStoreTupleStorageSubBlock.hpp">Compressed column store implementation</a></p>
+
+<h1 id="conclusion">Conclusion</h1>
+
+<p>I hope this blog post was useful and gives you some idea about the various storage formats implemented in Quickstep. If you have questions, please shoot us an email on dev@quickstep.incubator.apache.org.</p>
+
+  </div>
+
+  
+</article>
+
+      </div>
+    </main>
+
+    
+<footer class="site-footer">
+
+  <div class="wrapper">
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <img src="/assets/incubator-logo.png" />
+        <ul class="contact-list">
+          <li>
+          <h3>
+            
+              Apache Quickstep (Incubating)
+            
+            </h3>
+            </li>
+            
+            <li><a href="mailto:dev@quickstep.incubator.apache.org">dev@quickstep.incubator.apache.org</a></li>
+            
+        </ul>
+        <p>Quickstep is a next-generation data processing platform designed  for high-performance analytical queries.
+</p>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <h3>Disclaimer</h3>
+        <small>Apache Quickstep is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.</small>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+  </body>
+
+</html>

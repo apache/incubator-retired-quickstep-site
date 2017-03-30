@@ -1,5 +1,141 @@
-<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="http://localhost:4000/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.3.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2017-03-27T15:47:02-05:00</updated><id>http://localhost:4000//</id><title type="html">Apache Quickstep (Incubating)</title><subtitle>Quickstep is a next-generation data processing platform designed  for high-performance analytical queries.
-</subtitle><entry><title type="html">Your First Query</title><link href="http://localhost:4000/guides/2016/12/10/FirstQuery.html" rel="alternate" type="text/html" title="Your First Query" /><published>2016-12-10T12:29:09-06:00</published><updated>2016-12-10T12:29:09-06:00</updated><id>http://localhost:4000/guides/2016/12/10/FirstQuery</id><content type="html" xml:base="http://localhost:4000/guides/2016/12/10/FirstQuery.html">&lt;p&gt;For this tutorial, I’m going to assume you’re running in a unix environment. If you’re having trouble building on Windows, try asking the dev community (&lt;a href=&quot;mailto:dev@quickstep.incubating.apache.org&quot;&gt;dev@quickstep.incubating.apache.org&lt;/a&gt;). You can also find a complete guide &lt;a href=&quot;https://github.com/cramja/incubator-quickstep/blob/master/BUILDING.md&quot;&gt;here in our documentation&lt;/a&gt;.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.3.1">Jekyll</generator><link href="http://quickstep.apache.org//feed.xml" rel="self" type="application/atom+xml" /><link href="http://quickstep.apache.org//" rel="alternate" type="text/html" /><updated>2017-04-06T07:40:28-05:00</updated><id>http://quickstep.apache.org//</id><title type="html">Apache Quickstep (Incubating)</title><subtitle>Quickstep is a next-generation data processing platform designed  for high-performance analytical queries.
+</subtitle><entry><title type="html">Storage Formats in Quickstep</title><link href="http://quickstep.apache.org//guides/2017/03/30/storage-formats-quickstep.html" rel="alternate" type="text/html" title="Storage Formats in Quickstep" /><published>2017-03-30T15:00:30-05:00</published><updated>2017-03-30T15:00:30-05:00</updated><id>http://quickstep.apache.org//guides/2017/03/30/storage-formats-quickstep</id><content type="html" xml:base="http://quickstep.apache.org//guides/2017/03/30/storage-formats-quickstep.html">&lt;p&gt;One of the strengths of Quickstep is the variety of storage formats it offers to store the relational data. The storage management in Quickstep can work with all these formats, and each format comes with its own strengths and weaknesses. The foundation of this work was laid in a &lt;a href=&quot;http://www.vldb.org/pvldb/vol6/p1474-chasseur.pdf&quot;&gt;research paper&lt;/a&gt; from the Patel Wisconsin Database group that appeared in &lt;a href=&quot;http://vldb.org/&quot;&gt;VLDB 2014&lt;/a&gt; (International Conference on Very Large Databases). In this post, I will provide a brief primer on what these storage formats mean and how to use them in the Quickstep system. I will also provide links to the relevant source code files, so that the readers can start exploring the code base.&lt;/p&gt;
+
+&lt;h1 id=&quot;storage-formats-101&quot;&gt;Storage Formats 101&lt;/h1&gt;
+&lt;p&gt;A storage format refers to how the data in a table is laid out in the memory. Let’s consider a toy relational schema.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;CREATE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;employee&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ID&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;INT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Age&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;INT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Name&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;VARCHAR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;A tuple in the employee table consists of three attributes, id (an integer), age (an integer) and the name (character of 8 bytes fixed length). Let’s also populate our table with few tuples. For simplicity, let us assume that the name is a fixed length attribute; however, in general it could be variable length.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;into&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;employee&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;values&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;101&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'Jennifer'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;into&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;employee&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;values&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;102&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'Jim'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;into&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;employee&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;values&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;103&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;35&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'David'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;Conceptually, our table looks as follows:&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;ID&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;Age&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;Name&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;101&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;30&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jennifer&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;102&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;25&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jim&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;103&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;35&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;David&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;Dropping a table is easy -&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;DROP&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;employee&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;Next, let us dig into understanding the different ways in which this table can be stored in memory.&lt;/p&gt;
+
+&lt;h2 id=&quot;row-store&quot;&gt;Row Store&lt;/h2&gt;
+
+&lt;p&gt;The first storage format we will look at is &lt;em&gt;row store&lt;/em&gt;, which is a popular format, and one that is intuitive too.&lt;/p&gt;
+
+&lt;p&gt;The figure below represents how a row store format for our toy example looks like in memory. The offsets indicate how far is the memory location from the beginning of the block.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/storage-format-row-store.jpg&quot; alt=&quot;Row Store&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In the row store format, a tuple is stored in the table definition order. In memory, the ID (101) of the first tuple is stored at some address, and it is followed by the age field for that tuple (30), and then the name field (“Jennifer”). The second tuple is stored in memory sequentially after the first tuple, and so on.&lt;/p&gt;
+
+&lt;h2 id=&quot;column-store&quot;&gt;Column Store&lt;/h2&gt;
+
+&lt;p&gt;Let’s now take a look at the &lt;em&gt;column store&lt;/em&gt; format. The figure below depicts a column store layout for our toy example.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/storage-format-column-store.jpg&quot; alt=&quot;Column Store&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In the column store format, the values from the same column are stored together. The order in which the values from a column are stored remains the same for all the columns. Notice the ID values 101, 102, 103 are stored contiguously. The corresponding Age fields 30, 25 and 35 are stored contiguously and likewise for the Name column.&lt;/p&gt;
+
+&lt;h2 id=&quot;compression&quot;&gt;Compression&lt;/h2&gt;
+
+&lt;p&gt;Compression is a standard technique to reduce the storage footprint. There is a large body of work on various compression techniques, which we won’t cover here. Let’s look at how compression can be applied in our toy example. If we look at the ID column, it has three values 101, 102 and 103. If they are stored as regular integers, each of them will occupy 4 bytes of memory. Interestingly, we can reduce the memory consumed in storing these three values. Observe that these three values are very close to 100. If we remember the base value 100 and only record the difference of each value from this base value (of 100), then we only need to store the values 1, 2, and 3. To store these three &lt;em&gt;deltas&lt;/em&gt;, we don’t even need a 4 byte integer, a 1-byte value is enough.&lt;/p&gt;
+
+&lt;p&gt;Putting it all together, the picture below shows the compressed column store format in which the compression is applied on the ID column.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/storage-format-compressed-column-store.jpg&quot; alt=&quot;Column Store with Compression&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Observe that the memory occupied by the three tuples together is only 43 bytes, compared to 48 bytes in the row store and the column store formats. As the number of tuples increase, there may be more opportunities for compression and thus more memory savings.&lt;/p&gt;
+
+&lt;p&gt;There are some aspects related to storage management which deserve a blog post of their own. This includes the block-based storage design, and the impact of the above storage formats on various analytical queries. I hope to write more blog posts to cover these topics in the future.&lt;/p&gt;
+
+&lt;h1 id=&quot;creating-tables-with-various-storage-formats-in-quickstep&quot;&gt;Creating tables with various storage formats in Quickstep&lt;/h1&gt;
+
+&lt;p&gt;Now I will show you how to use the above storage formats to create tables in Quickstep. The storage format specification is part of the &lt;code class=&quot;highlighter-rouge&quot;&gt;CREATE TABLE SQL&lt;/code&gt; command. We will continue with our toy example above to illustrate the various ways in which we can use the storage formats in Quickstep.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;CREATE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;employee&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;ID&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;INT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;Age&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;INT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;Name&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;VARCHAR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BLOCKPROPERTIES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;TYPE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;split_rowstore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;BLOCKSIZEMB&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;I will now describe some keywords used in the above SQL statement. The keyword &lt;code class=&quot;highlighter-rouge&quot;&gt;BLOCKPROPERTIES&lt;/code&gt; refers to the storage properties of this table. The above command means that all the blocks in the employee table will use the row store format (the name &lt;code class=&quot;highlighter-rouge&quot;&gt;split_rowstore&lt;/code&gt; means just simple row store), with each block sized to a maximum of 4 MB.&lt;/p&gt;
+
+&lt;p&gt;In the example below, all the blocks in the employee table have compressed column store as their storage format. The values in each block are sorted by the &lt;code class=&quot;highlighter-rouge&quot;&gt;ID&lt;/code&gt; values, and the compression is applied on the &lt;code class=&quot;highlighter-rouge&quot;&gt;ID&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;Name&lt;/code&gt; columns.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;highlighter-rouge&quot;&gt;COMPRESS&lt;/code&gt; keyword accepts one or more or &lt;code class=&quot;highlighter-rouge&quot;&gt;ALL&lt;/code&gt; the columns from the table. Thus it can look like:&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;CREATE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;employee&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;ID&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;INT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;Age&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;INT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;Name&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;VARCHAR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BLOCKPROPERTIES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;TYPE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;compressed_columnstore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;SORT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;COMPRESS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;BLOCKSIZEMB&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;Finally, the command below indicates that the compression is applied on all the columns.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;CREATE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;employee&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;ID&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;INT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;Age&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;INT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;Name&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;VARCHAR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BLOCKPROPERTIES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;TYPE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;compressed_columnstore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;SORT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;COMPRESS&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;BLOCKSIZEMB&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;h1 id=&quot;implementation-details&quot;&gt;Implementation Details&lt;/h1&gt;
+
+&lt;p&gt;The above illustrations are meant to explain the various storage formats. In the actual implementation, in each storage block, there is a separate region to store the variable length attributes. For such attributes, in the row store implementation, we use a pointer (or offset) to point to the true location of the variable length attribute.&lt;/p&gt;
+
+&lt;p&gt;In the current implementation, the compressed column store format requires that all the variable length attributes be compressed.&lt;/p&gt;
+
+&lt;p&gt;For folks interested in looking at the source code for these storage formats, I  provide the links to relevant source code files below. Our code is well documented (doxygen) for the most part, so it should be easier to read.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/apache/incubator-quickstep/blob/master/parser/ParseBlockProperties.hpp&quot;&gt;Parsing the block properties&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/apache/incubator-quickstep/blob/master/storage/SplitRowStoreTupleStorageSubBlock.hpp&quot;&gt;Row store implementation&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/apache/incubator-quickstep/blob/master/storage/BasicColumnStoreTupleStorageSubBlock.hpp&quot;&gt;Basic column store implementation&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/apache/incubator-quickstep/blob/master/storage/CompressedColumnStoreTupleStorageSubBlock.hpp&quot;&gt;Compressed column store implementation&lt;/a&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h1&gt;
+
+&lt;p&gt;I hope this blog post was useful and gives you some idea about the various storage formats implemented in Quickstep. If you have questions, please shoot us an email on dev@quickstep.incubator.apache.org.&lt;/p&gt;</content><author><name>Harshad</name></author><summary type="html">One of the strengths of Quickstep is the variety of storage formats it offers to store the relational data. The storage management in Quickstep can work with all these formats, and each format comes with its own strengths and weaknesses. The foundation of this work was laid in a research paper from the Patel Wisconsin Database group that appeared in VLDB 2014 (International Conference on Very Large Databases). In this post, I will provide a brief primer on what these storage formats mean and how to use them in the Quickstep system. I will also provide links to the relevant source code files, so that the readers can start exploring the code base.</summary></entry><entry><title type="html">Your First Query</title><link href="http://quickstep.apache.org//guides/2016/12/10/FirstQuery.html" rel="alternate" type="text/html" title="Your First Query" /><published>2016-12-10T12:29:09-06:00</published><updated>2016-12-10T12:29:09-06:00</updated><id>http://quickstep.apache.org//guides/2016/12/10/FirstQuery</id><content type="html" xml:base="http://quickstep.apache.org//guides/2016/12/10/FirstQuery.html">&lt;p&gt;For this tutorial, I’m going to assume you’re running in a unix environment. If you’re having trouble building on Windows, try asking the dev community (&lt;a href=&quot;mailto:dev@quickstep.incubating.apache.org&quot;&gt;dev@quickstep.incubating.apache.org&lt;/a&gt;). You can also find a complete guide &lt;a href=&quot;https://github.com/cramja/incubator-quickstep/blob/master/BUILDING.md&quot;&gt;here in our documentation&lt;/a&gt;.&lt;/p&gt;
 
 &lt;p&gt;If you’re going to build Quickstep, you’ll first need to clone it from Github and initialize the submodules&lt;/p&gt;
 
